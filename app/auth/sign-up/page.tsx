@@ -7,55 +7,59 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/lib/auth-context';
+import { registerApi, loginApi } from "@/lib/api";
+
 
 export default function SignUp() {
   const router = useRouter();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
-    agreeToTerms: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      agreeToTerms: checked,
-    }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // TODO: Backend Integration
-    // const response = await fetch('/api/auth/signup', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(formData),
-    // });
-    
-    console.log('Sign up data:', formData);
-    
-    // Login user with the provided credentials
-    login(formData.username, formData.email);
-    
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrorMsg('');
+
+    try {
+      // Register the user
+      await registerApi(
+        formData.username,
+        formData.email,
+        formData.password,
+      );
+
+      // log in
+      const loginRes = await loginApi(
+        formData.email,
+        formData.password,
+      );
+
+      await login(loginRes.access_token)
       router.push('/dashboard');
-    }, 1000);
+
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      try {
+        const data = JSON.parse(err.message);
+        setErrorMsg(data.message || 'Registration failed');
+      } catch {
+        setErrorMsg('Registration failed');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,28 +68,15 @@ export default function SignUp() {
         <div className="bg-white rounded-lg shadow-lg p-8 border border-slate-200">
           <div className="flex justify-between items-center mb-6">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <Image
-                src="/logo.png"
-                alt="Automize Logo"
-                width={48}
-                height={48}
-                className="rounded-lg"
-              />
+              <Image src="/logo.png" alt="Automize Logo" width={48} height={48} />
             </Link>
-            <Link
-              href="/"
-              className="text-slate-400 hover:text-slate-600 transition-colors text-2xl"
-            >
-              ✕
-            </Link>
+            <Link href="/" className="text-slate-400 hover:text-slate-600 transition-colors text-2xl">✕</Link>
           </div>
-          
-          <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">
-            Sign up
-          </h2>
-          <p className="text-slate-600 text-center mb-6">
-            Wir sind bereit zu Registrieren
-          </p>
+
+          <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Sign up</h2>
+          <p className="text-slate-600 text-center mb-6">Wir sind bereit zu Registrieren</p>
+
+          {errorMsg && <p className="text-red-500 text-center mb-3">{errorMsg}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -127,25 +118,7 @@ export default function SignUp() {
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="terms"
-                checked={formData.agreeToTerms}
-                onCheckedChange={handleCheckboxChange}
-              />
-              <label
-                htmlFor="terms"
-                className="text-sm text-slate-600 cursor-pointer"
-              >
-                Ich akzeptiere die Nutzungsbedingungen
-              </label>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Wird registriert...' : 'Create Account'}
             </Button>
           </form>
@@ -153,10 +126,7 @@ export default function SignUp() {
           <div className="mt-6 text-center">
             <p className="text-slate-600">
               Already have an account?{' '}
-              <Link
-                href="/auth/sign-in"
-                className="text-blue-600 hover:text-blue-700 font-semibold"
-              >
+              <Link href="/auth/sign-in" className="text-blue-600 hover:text-blue-700 font-semibold">
                 Sign In →
               </Link>
             </p>

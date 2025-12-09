@@ -8,17 +8,18 @@ import { Header } from '@/components/header';
 import { useAuth } from '@/lib/auth-context';
 
 export default function Dashboard() {
-  const { isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/sign-in');
+    if (!loading && !user) {
+      router.push('/auth/sign-in'); // redirect if not logged in
     }
-  }, [isAuthenticated, router]);
+  }, [user, loading, router]);
 
-  if (!isAuthenticated) {
-    return null;
+  if (loading || !user) {
+    // optionally show a loader while checking authentication
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (

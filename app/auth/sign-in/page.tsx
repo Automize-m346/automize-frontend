@@ -8,44 +8,51 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth-context';
+import { loginApi } from '@/lib/api';
 
 export default function SignIn() {
   const router = useRouter();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // TODO: Backend Integration
-    // const response = await fetch('/api/auth/signin', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(formData),
-    // });
-    
-    console.log('Sign in data:', formData);
-    
-    // Login user with the provided username (use as email placeholder)
-    login(formData.username, formData.username + '@automize.com');
-    
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrorMsg('');
+
+    try {
+      const response = await loginApi(
+        formData.email,
+        formData.password,
+      );
+
+      const token = response.access_token;
+      if (!token) throw new Error('No token returned');
+
+      await login(token)
       router.push('/dashboard');
-    }, 1000);
+
+    } catch (err: any) {
+      console.error('Login error:', err);
+      try {
+        const data = JSON.parse(err.message);
+        setErrorMsg(data.message || 'Login failed');
+      } catch {
+        setErrorMsg('Login failed');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -54,38 +61,25 @@ export default function SignIn() {
         <div className="bg-white rounded-lg shadow-lg p-8 border border-slate-200">
           <div className="flex justify-between items-center mb-6">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <Image
-                src="/logo.png"
-                alt="Automize Logo"
-                width={48}
-                height={48}
-                className="rounded-lg"
-              />
+              <Image src="/logo.png" alt="Automize Logo" width={48} height={48} />
             </Link>
-            <Link
-              href="/"
-              className="text-slate-400 hover:text-slate-600 transition-colors text-2xl"
-            >
-              ✕
-            </Link>
+            <Link href="/" className="text-slate-400 hover:text-slate-600 transition-colors text-2xl">✕</Link>
           </div>
-          
-          <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">
-            Sign in
-          </h2>
-          <p className="text-slate-600 text-center mb-6">
-            Wir sind bereit um Login
-          </p>
+
+          <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Sign in</h2>
+          <p className="text-slate-600 text-center mb-6">Willkommen zurück</p>
+
+          {errorMsg && <p className="text-red-500 text-center mb-3">{errorMsg}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="johndoe"
-                value={formData.username}
+                id="email"
+                name="email"
+                type="email"
+                placeholder="john@example.com"
+                value={formData.email}
                 onChange={handleChange}
                 required
               />
@@ -104,11 +98,7 @@ export default function SignIn() {
               />
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Wird angemeldet...' : 'Sign In'}
             </Button>
           </form>
@@ -116,10 +106,7 @@ export default function SignIn() {
           <div className="mt-6 text-center">
             <p className="text-slate-600">
               Noch kein Konto?{' '}
-              <Link
-                href="/auth/sign-up"
-                className="text-blue-600 hover:text-blue-700 font-semibold"
-              >
+              <Link href="/auth/sign-up" className="text-blue-600 hover:text-blue-700 font-semibold">
                 Sign up →
               </Link>
             </p>

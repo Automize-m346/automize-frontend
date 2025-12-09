@@ -1,65 +1,77 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from "react";
+import { meApi } from "./api";
 
 interface User {
-  id: string;
+  id: number;
   username: string;
   email: string;
 }
 
-interface AuthContextType {
+interface AuthContextProps {
   user: User | null;
-  isLoading: boolean;
-  login: (username: string, email: string) => void;
+  login: (token: string) => Promise<void>;
   logout: () => void;
-  isAuthenticated: boolean;
+  loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextProps | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Restore user from localStorage on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem('automize_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        localStorage.removeItem('automize_user');
-      }
+  // Login with token only
+  const login = async (token: string) => {
+    try {
+      localStorage.setItem("token", token);
+
+      // fetch user profile
+      const profile = await meApi(token);
+      setUser(profile);
+    } catch (err) {
+      console.error("Login failed:", err);
+      logout(); // clear invalid token
+      throw err;
     }
-    setIsLoading(false);
-  }, []);
-
-  const login = (username: string, email: string) => {
-    const newUser: User = {
-      id: Math.random().toString(36).substring(2, 11),
-      username,
-      email,
-    };
-    setUser(newUser);
-    localStorage.setItem('automize_user', JSON.stringify(newUser));
   };
 
   const logout = () => {
+    localStorage.removeItem("token");
     setUser(null);
-    localStorage.removeItem('automize_user');
   };
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await meApi(token);
+        setUser(profile);
+      } catch (err) {
+        console.error("Failed to fetch user on init:", err);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
         login,
         logout,
-        isAuthenticated: user !== null,
-      }}
-    >
+        loading
+      }}>
       {children}
     </AuthContext.Provider>
   );
