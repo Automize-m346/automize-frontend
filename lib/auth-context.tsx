@@ -11,6 +11,7 @@ interface User {
 
 interface AuthContextProps {
   user: User | null;
+  isAuthenticated: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextProps | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const isAuthenticated = !loading && user !== null;
 
   // Login with token only
   const login = async (token: string) => {
@@ -68,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        isAuthenticated,
         login,
         logout,
         loading
