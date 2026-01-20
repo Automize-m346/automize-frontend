@@ -43,3 +43,8 @@ next-env.d.ts
 
 # Temp ignore:
 /scripts/setup.sh
+
+# Terraform
+terraform.tfvars
+.terraform/
+*.tfstate*
